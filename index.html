@@ -49,4 +49,427 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-bold text-zinc-300 mb-1">Location Pill (स्थान / जिला)</label>
-                    <input type="text" id="locationTag"
+                    <input type="text" id="locationTag" value="सिकंदराबाद" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">Brand Badge Text</label>
+                    <input type="text" id="channelTag" value="तीखी ख़बर" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Byte / Middle Tag & Reporter Strip -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">Byte / Center Tag (खाली छोड़ने पर छुप जाएगा)</label>
+                    <input type="text" id="byteTitle" value="बाइट - स्थानीय अधिकारी" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none" placeholder="e.g. बाइट - अधिकारी का नाम">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">Reporter Name / Website Strip</label>
+                    <input type="text" id="reporterInfo" value="तीखी ख़बर ब्यूरो | tikhikhabar.com" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Optional Custom Logo & Reporter Photo Uploads -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-zinc-800">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Custom Logo PNG (Optional)</label>
+                    <input type="file" id="logoFile" accept="image/*" class="w-full text-xs text-zinc-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-700 file:text-white cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Reporter/Anchor Photo (Optional)</label>
+                    <input type="file" id="avatarFile" accept="image/*" class="w-full text-xs text-zinc-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-700 file:text-white cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Bottom Breaking Footer Text -->
+            <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Bottom Footer Banner Text</label>
+                <input type="text" id="footerText" value="BREAKING NEWS • TIKHIKHABAR.COM" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                <button onclick="togglePreviewPlay()" id="previewBtn" class="sm:w-1/3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 rounded-xl border border-zinc-700 text-sm transition">
+                    ▶ Preview Video
+                </button>
+                <button onclick="startExport()" id="exportBtn" class="sm:w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-red-900/40 transition">
+                    🔴 Record & Export Branded Video
+                </button>
+            </div>
+
+            <div id="status" class="hidden p-3 bg-zinc-800/90 border border-zinc-700 rounded-xl text-center text-xs"></div>
+        </div>
+
+        <!-- Right Column: Live Canvas Preview -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl">
+            <span class="text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Live Broadcast Preview</span>
+            <div class="w-full flex items-center justify-center overflow-hidden">
+                <canvas id="previewCanvas" width="720" height="1280" class="max-h-[560px] w-auto rounded-xl border border-zinc-700 shadow-xl bg-black"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <video id="sourceVideo" class="hidden" playsinline crossorigin="anonymous"></video>
+
+    <script>
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('sourceVideo');
+
+        let logoImg = null;
+        let avatarImg = null;
+        let isExporting = false;
+        let animId = null;
+
+        document.getElementById('videoFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            video.src = URL.createObjectURL(file);
+            video.load();
+            video.onloadeddata = () => { video.currentTime = 0.1; };
+            video.onseeked = () => { drawPreviewFrame(); };
+        });
+
+        document.getElementById('logoFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const img = new Image();
+            img.onload = () => { logoImg = img; drawPreviewFrame(); };
+            img.src = URL.createObjectURL(file);
+        });
+
+        document.getElementById('avatarFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const img = new Image();
+            img.onload = () => { avatarImg = img; drawPreviewFrame(); };
+            img.src = URL.createObjectURL(file);
+        });
+
+        function updateCanvasSize() {
+            const isShorts = document.getElementById('format').value === '9:16';
+            canvas.width = isShorts ? 720 : 1280;
+            canvas.height = isShorts ? 1280 : 720;
+            drawPreviewFrame();
+        }
+
+        function togglePreviewPlay() {
+            if (!video.src) {
+                alert("कृपया पहले कोई वीडियो चुनें (Please select a video file first).");
+                return;
+            }
+            const btn = document.getElementById('previewBtn');
+            if (video.paused) {
+                video.muted = false;
+                video.play();
+                btn.innerText = "⏸ Pause Preview";
+                renderLoop();
+            } else {
+                video.pause();
+                btn.innerText = "▶ Preview Video";
+                cancelAnimationFrame(animId);
+            }
+        }
+
+        function renderLoop() {
+            drawPreviewFrame();
+            if (!video.paused && !video.ended) {
+                animId = requestAnimationFrame(renderLoop);
+            } else if (video.ended && !isExporting) {
+                document.getElementById('previewBtn').innerText = "▶ Preview Video";
+            }
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius, fill, stroke) {
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x, y, width, height, radius);
+            } else {
+                ctx.rect(x, y, width, height);
+            }
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke(); }
+        }
+
+        function drawPreviewFrame() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const isShorts = (w === 720);
+
+            const headline = document.getElementById('headline').value;
+            const locationTag = document.getElementById('locationTag').value;
+            const channelTag = document.getElementById('channelTag').value;
+            const byteTitle = document.getElementById('byteTitle').value;
+            const reporterInfo = document.getElementById('reporterInfo').value;
+            const footerText = document.getElementById('footerText').value;
+
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+            bgGrad.addColorStop(0, '#091536');
+            bgGrad.addColorStop(0.5, '#050811');
+            bgGrad.addColorStop(1, '#1a0505');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            if (isShorts) {
+                const vidY = 265;
+                const vidH = 815;
+                if (video.readyState >= 2) {
+                    const vw = video.videoWidth || w;
+                    const vh = video.videoHeight || vidH;
+                    const scale = Math.max(w / vw, vidH / vh);
+                    const sw = w / scale;
+                    const sh = vidH / scale;
+                    const sx = (vw - sw) / 2;
+                    const sy = (vh - sh) / 2;
+                    ctx.drawImage(video, sx, sy, sw, sh, 0, vidY, w, vidH);
+                } else {
+                    ctx.fillStyle = "#18181b";
+                    ctx.fillRect(0, vidY, w, vidH);
+                    ctx.fillStyle = "#71717a";
+                    ctx.font = "bold 24px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("आपका वीडियो यहाँ दिखेगा (Video Area)", w / 2, vidY + vidH / 2);
+                }
+
+                const boxX = 16, boxY = 55, boxW = w - 32, boxH = 175;
+                const redGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+                redGrad.addColorStop(0, '#b91c1c');
+                redGrad.addColorStop(1, '#7f1d1d');
+                drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 22, redGrad, '#ffffff');
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "800 35px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "center";
+                wrapText(ctx, headline, w / 2, boxY + 58, boxW - 40, 46);
+
+                if (locationTag.trim() !== "") {
+                    ctx.font = "800 26px 'Noto Sans Devanagari', sans-serif";
+                    const locW = Math.max(ctx.measureText(locationTag).width + 44, 150);
+                    drawRoundedRect(ctx, 32, boxY + boxH - 22, locW, 46, 12, '#dc2626', '#ffffff');
+                    ctx.fillStyle = "#ffffff";
+                    ctx.textAlign = "center";
+                    ctx.fillText(locationTag, 32 + locW / 2, boxY + boxH + 10);
+                }
+
+                const badgeW = 210, badgeH = 48;
+                const badgeX = w - badgeW - 28;
+                const badgeY = boxY + boxH - 22;
+                drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 24, '#090d16', '#ffffff');
+
+                if (logoImg) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(badgeX + 26, badgeY + 24, 18, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(logoImg, badgeX + 8, badgeY + 6, 36, 36);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(badgeX + 26, badgeY + 24, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fill();
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "900 15px 'Noto Sans Devanagari', sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("तीखी", badgeX + 26, badgeY + 29);
+                }
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "800 22px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(channelTag, badgeX + 124, badgeY + 32);
+
+                if (byteTitle.trim() !== "") {
+                    ctx.font = "700 24px 'Noto Sans Devanagari', sans-serif";
+                    const byteW = Math.min(ctx.measureText(byteTitle).width + 44, w - 60);
+                    const byteY = 640;
+                    drawRoundedRect(ctx, 24, byteY, byteW, 46, 23, 'rgba(220, 38, 38, 0.92)', '#ffffff');
+                    ctx.fillStyle = "#ffffff";
+                    ctx.textAlign = "left";
+                    ctx.fillText(byteTitle, 46, byteY + 31, byteW - 36);
+                }
+
+                const repY = 1015;
+                if (reporterInfo.trim() !== "") {
+                    ctx.font = "700 24px 'Noto Sans Devanagari', sans-serif";
+                    const repW = Math.min(ctx.measureText(reporterInfo).width + 65, w - 120);
+                    drawRoundedRect(ctx, 95, repY, repW, 46, 12, '#b91c1c', '#ffffff');
+                    ctx.fillStyle = "#ffffff";
+                    ctx.textAlign = "left";
+                    ctx.fillText(reporterInfo, 125, repY + 31, repW - 40);
+                }
+
+                const avX = 64, avY = repY + 20, avR = 46;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+                ctx.fillStyle = "#18181b";
+                ctx.fill();
+                ctx.clip();
+                if (avatarImg) {
+                    ctx.drawImage(avatarImg, avX - avR, avY - avR, avR * 2, avR * 2);
+                } else if (logoImg) {
+                    ctx.drawImage(logoImg, avX - avR, avY - avR, avR * 2, avR * 2);
+                } else {
+                    ctx.fillStyle = "#991b1b";
+                    ctx.fillRect(avX - avR, avY - avR, avR * 2, avR * 2);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "900 22px 'Noto Sans Devanagari', sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("तीखी", avX, avY - 2);
+                    ctx.fillText("ख़बर", avX, avY + 22);
+                }
+                ctx.restore();
+                ctx.beginPath();
+                ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "#ffffff";
+                ctx.stroke();
+
+                const footY = 1080;
+                const footGrad = ctx.createLinearGradient(0, footY, w, footY);
+                footGrad.addColorStop(0, '#0f172a');
+                footGrad.addColorStop(0.5, '#1e3a8a');
+                footGrad.addColorStop(1, '#0f172a');
+                ctx.fillStyle = footGrad;
+                ctx.fillRect(0, footY, w, h - footY);
+
+                ctx.fillStyle = "#dc2626";
+                ctx.fillRect(0, footY, w, 6);
+
+                ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+                ctx.font = "900 34px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(footerText, w / 2, footY + 75, w - 40);
+
+                ctx.fillStyle = "#facc15";
+                ctx.font = "700 20px sans-serif";
+                ctx.fillText("🌐 www.tikhikhabar.com", w / 2, footY + 115);
+
+            } else {
+                if (video.readyState >= 2) {
+                    ctx.drawImage(video, 0, 0, w, h);
+                }
+
+                drawRoundedRect(ctx, w - 250, 30, 210, 54, 12, 'rgba(185, 28, 28, 0.95)', '#ffffff');
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "800 26px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(channelTag, w - 145, 66);
+
+                if (locationTag.trim() !== "") {
+                    drawRoundedRect(ctx, 40, 30, 180, 48, 10, 'rgba(15, 23, 42, 0.9)', '#dc2626');
+                    ctx.fillStyle = "#facc15";
+                    ctx.font = "700 22px 'Noto Sans Devanagari', sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("📍 " + locationTag, 130, 62);
+                }
+
+                drawRoundedRect(ctx, 40, h - 145, w - 80, 80, 14, 'rgba(185, 28, 28, 0.95)', '#ffffff');
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "800 28px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(headline, w / 2, h - 95, w - 120);
+
+                ctx.fillStyle = "#090d16";
+                ctx.fillRect(0, h - 50, w, 50);
+                ctx.fillStyle = "#facc15";
+                ctx.font = "700 20px 'Noto Sans Devanagari', sans-serif";
+                ctx.textAlign = "left";
+                ctx.fillText("▶ " + reporterInfo + "  •  " + footerText, 40, h - 18, w - 80);
+            }
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            let lineCount = 0;
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    context.fillText(line.trim(), x, y);
+                    line = words[n] + ' ';
+                    y += lineHeight;
+                    lineCount++;
+                    if (lineCount >= 2) break;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line.trim(), x, y);
+        }
+
+        async function startExport() {
+            if (!video.src) {
+                alert("कृपया पहले कोई वीडियो फ़ाइल चुनें! (Please select a video file first)");
+                return;
+            }
+
+            const exportBtn = document.getElementById('exportBtn');
+            const statusDiv = document.getElementById('status');
+            isExporting = true;
+            exportBtn.disabled = true;
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerHTML = '<span class="text-yellow-400 font-bold animate-pulse">🔴 Recording & Burning Overlays... Keep this tab open until the video finishes playing.</span>';
+
+            video.pause();
+            video.currentTime = 0;
+            video.muted = false;
+
+            const canvasStream = canvas.captureStream(30);
+
+            try {
+                const vidStream = video.captureStream ? video.captureStream() : (video.mozCaptureStream ? video.mozCaptureStream() : null);
+                if (vidStream && vidStream.getAudioTracks().length > 0) {
+                    canvasStream.addTrack(vidStream.getAudioTracks()[0]);
+                }
+            } catch (e) {
+                console.warn("Audio track merge skipped:", e);
+            }
+
+            let mimeType = 'video/webm;codecs=vp9';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm';
+            }
+
+            const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 4500000 });
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                isExporting = false;
+                exportBtn.disabled = false;
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+
+                statusDiv.innerHTML = `
+                    <p class="text-green-400 font-bold mb-2">✅ तीखी ख़बर Video Ready!</p>
+                    <a href="${url}" download="TikhiKhabar-News-${Date.now()}.webm" class="inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-lg text-xs shadow-lg">
+                        ⬇ Download Final Video
+                    </a>
+                `;
+            };
+
+            await video.play();
+            recorder.start();
+
+            function exportLoop() {
+                drawPreviewFrame();
+                if (!video.paused && !video.ended) {
+                    requestAnimationFrame(exportLoop);
+                } else {
+                    recorder.stop();
+                }
+            }
+            exportLoop();
+        }
+
+        window.onload = () => drawPreviewFrame();
+    </script>
+</body>
+</html>
