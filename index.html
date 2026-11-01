@@ -3,172 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>तीखी ख़बर Studio - Web Edition</title>
+    <title>तीखी ख़बर Studio - News Reel Maker</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans Devanagari', sans-serif; }
+    </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
-    <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-2xl">
-        <div class="flex items-center justify-center mb-2">
-            <span class="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">LIVE STUDIO</span>
-        </div>
-        <h1 class="text-2xl font-extrabold text-red-600 text-center mb-1">तीखी ख़बर Studio</h1>
-        <p class="text-xs text-zinc-400 text-center mb-6">Upload your video, add breaking news banners, and export it instantly.</p>
+<body class="bg-zinc-950 text-white min-h-screen p-3 md:p-6 flex flex-col items-center">
+
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <div class="space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-zinc-300 mb-1">Format</label>
-                <select id="format" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-600">
-                    <option value="16:9">16:9 Landscape (YouTube / TV Broadcast)</option>
-                    <option value="9:16">9:16 Vertical (Shorts / Reels)</option>
-                </select>
+        <!-- Left Column: Controls -->
+        <div class="lg:col-span-7 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div>
+                    <h1 class="text-2xl font-black text-red-500 tracking-tight">तीखी ख़बर STUDIO</h1>
+                    <p class="text-xs text-zinc-400">tikhikhabar.com • Broadcast Reel & Video Maker</p>
+                </div>
+                <span class="bg-red-600/20 text-red-400 border border-red-600/40 text-xs font-bold px-3 py-1 rounded-full">9:16 & 16:9</span>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-zinc-300 mb-1">Breaking News Headline</label>
-                <input type="text" id="headline" value="उत्तराखंड: एक्सप्रेसवे निर्माण कार्य तेज, यातायात में बदलाव" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-600">
+            <!-- Format & Video Upload -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">Video Format</label>
+                    <select id="format" onchange="updateCanvasSize()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">
+                        <option value="9:16">9:16 Vertical (Reels / Shorts)</option>
+                        <option value="16:9">16:9 Landscape (YouTube / Web)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">1. Select Source Video *</label>
+                    <input type="file" id="videoFile" accept="video/*" class="w-full text-xs text-zinc-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer bg-zinc-800 rounded-lg border border-zinc-700">
+                </div>
             </div>
 
+            <!-- Main Headline -->
             <div>
-                <label class="block text-xs font-semibold text-zinc-300 mb-1">Flash News / Ticker Content</label>
-                <input type="text" id="ticker" value="बड़ी ख़बर: स्थानीय प्रशासन ने भारी वाहनों के लिए डायवर्जन रूट किया जारी।" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-600">
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Top Red Banner Headline (मुख्य ख़बर)</label>
+                <textarea id="headline" rows="2" oninput="drawPreviewFrame()" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:border-red-500 outline-none">सिकंदराबाद में प्रशासन की बड़ी कार्रवाई, मुख्य मार्ग पर यातायात व्यवस्था में बदलाव</textarea>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-zinc-300 mb-1">Upload Source Video</label>
-                <input type="file" id="videoFile" accept="video/*" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
-            </div>
-
-            <button onclick="processVideo()" id="exportBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition duration-200 text-sm shadow-lg shadow-red-900/30 flex items-center justify-center space-x-2">
-                <span>Export Branded Video</span>
-            </button>
-
-            <div id="status" class="hidden mt-4 p-3 bg-zinc-800 rounded-xl text-center text-xs"></div>
-        </div>
-    </div>
-
-    <script>
-        async function processVideo() {
-            const fileInput = document.getElementById('videoFile');
-            const headlineInput = document.getElementById('headline').value;
-            const tickerInput = document.getElementById('ticker').value;
-            const format = document.getElementById('format').value;
-            const statusDiv = document.getElementById('status');
-            const exportBtn = document.getElementById('exportBtn');
-
-            if (fileInput.files.length === 0) {
-                alert("कृपया पहले कोई वीडियो फ़ाइल अपलोड करें! (Please upload a video file first)");
-                return;
-            }
-
-            exportBtn.disabled = true;
-            statusDiv.classList.remove('hidden');
-            statusDiv.innerHTML = '<span class="text-yellow-400 animate-pulse">Processing video frames & rendering overlays... Please wait.</span>';
-
-            const file = fileInput.files[0];
-            const video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
-            video.crossOrigin = "anonymous";
-            video.muted = true;
-
-            await new Promise((resolve) => {
-                video.onloadedmetadata = () => resolve();
-            });
-
-            const isShorts = format === "9:16";
-            const width = isShorts ? 720 : 1280;
-            const height = isShorts ? 1280 : 720;
-
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-
-            const stream = canvas.captureStream(30); // 30 fps
-            let recorder;
-            try {
-                recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-            } catch (e) {
-                recorder = new MediaRecorder(stream);
-            }
-
-            const chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                
-                statusDiv.innerHTML = `
-                    <p class="text-green-400 font-bold mb-2">✓ Video Exported Successfully!</p>
-                    <a href="${url}" download="tikhikhabar-branded.webm" class="inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow">
-                        Download Branded Video File
-                    </a>
-                `;
-                exportBtn.disabled = false;
-            };
-
-            recorder.start();
-            video.play();
-
-            function drawFrame() {
-                if (video.paused || video.ended) {
-                    recorder.stop();
-                    return;
-                }
-
-                // Draw video frame
-                ctx.drawImage(video, 0, 0, width, height);
-
-                // Draw overlays
-                if (isShorts) {
-                    // Top-right logo pill
-                    ctx.fillStyle = "rgba(183, 28, 28, 0.9)";
-                    ctx.fillRect(width - 200, 40, 160, 45);
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.font = "bold 18px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText("तीखी ख़बर", width - 120, 68);
-
-                    // Bottom caption box
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                    ctx.fillRect(30, height - 260, width - 60, 90);
-                    ctx.fillStyle = "#FF5252";
-                    ctx.font = "bold 20px sans-serif";
-                    ctx.textAlign = "left";
-                    ctx.fillText("ब्रेकिंग न्यूज़", 50, height - 225);
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.font = "16px sans-serif";
-                    ctx.fillText(headlineInput, 50, height - 195, width - 100);
-                } else {
-                    // 16:9 Landscape TV Broadcast overlay
-                    ctx.fillStyle = "#B71C1C";
-                    ctx.fillRect(40, 30, 180, 45);
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.font = "bold 22px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText("तीखी ख़बर", 130, 60);
-
-                    // Lower third box
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                    ctx.fillRect(40, height - 150, width - 80, 90);
-                    ctx.fillStyle = "#FF5252";
-                    ctx.font = "bold 20px sans-serif";
-                    ctx.textAlign = "left";
-                    ctx.fillText("ब्रेकिंग न्यूज़:", 60, height - 110);
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.font = "18px sans-serif";
-                    ctx.fillText(headlineInput, 175, height - 110, width - 230);
-
-                    // Ticker
-                    ctx.fillStyle = "#FFFFFF";
-                    ctx.font = "14px sans-serif";
-                    ctx.fillText("▶ " + tickerInput, 60, height - 75, width - 120);
-                }
-
-                requestAnimationFrame(drawFrame);
-            }
-
-            drawFrame();
-        }
-    </script>
-</body>
-</html>
+            <!-- Location & Brand Name -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-300 mb-1">Location Pill (स्थान / जिला)</label>
+                    <input type="text" id="locationTag"
